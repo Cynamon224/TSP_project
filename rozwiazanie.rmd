@@ -1,0 +1,172 @@
+1. Wprowadzenie i konfiguracja danych
+
+```{r}
+miasta <- read.delim('clipboard', header =T)
+
+miasta <- noquote(as.matrix(miasta))
+
+miasta
+```
+
+```{r}
+temp <- miasta[,-1]
+rownames(temp) <- miasta[,1]
+odleglosci <- matrix(as.numeric(temp), ncol = ncol(temp))
+rownames(odleglosci)<- rownames(temp)
+colnames(odleglosci) <- colnames(temp)
+odleglosci
+```
+
+```{r}
+nazwy <- labels(miasta)[2][[1]]
+nazwy <- nazwy[-1]
+nazwy
+```
+
+2. Obliczanie najkrótszej trasy
+
+```{r}
+fitness <- function(tour, dist) {
+   tour <- c(tour, tour[1])
+   route <- embed(tour, 2)
+   
+  -sum(dist[route])
+}
+```
+
+```{r}
+library('GA')
+liczba_miast <- nrow(odleglosci)
+wynik <- ga(type = "permutation", fitness = fitness, dist = odleglosci, lower = 1, upper = liczba_miast, popSize = 200, maxiter = 300, run = 50, pmutation = 0.1)
+summary(wynik)
+```
+
+```{r}
+summary(wynik)
+```
+
+```{r}
+mds <- cmdscale(odleglosci)
+x <- mds[, 1]
+y <- -mds[, 2]
+plot(x, y, type = "n", asp = 1, xlab = "", ylab = "")
+abline(h = pretty(range(x), 10), v = pretty(range(y), 10),
+           col = "light gray")
+tour <- wynik@solution[1, ]
+tour <- c(tour, tour[1])
+n <- length(tour)
+arrows(x[tour[-n]], y[tour[-n]], x[tour[-1]], y[tour[-1]],
+           length = 0.15, angle = 25, col = "steelblue", lwd = 2)
+text(x, y, nazwy, cex=0.8)
+```
+
+3. Obliczanie trasy z uwzględnieniem pogody
+
+```{r}
+pogoda <- read.delim('clipboard', header=F)
+
+pogoda <- noquote(as.matrix(pogoda))
+
+pogoda <- matrix(as.numeric(pogoda), ncol = ncol(pogoda))
+
+pogoda
+```
+
+
+```{r}
+fitness2 <- function(tour, dist, pogoda) {
+    
+   tour2 <- c(tour, tour[1])
+   route <- embed(tour2, 2)
+   deszcz_kara <- 0
+   
+   dystans <- sum(dist[route])
+   
+   deszcz_kara <- sum(sapply(1:length(tour), function(x) pogoda[x, tour[x]] * 200))
+   
+  -sum(dystans, deszcz_kara)
+}
+```
+
+```{r}
+wynik2 <- ga(type = "permutation", fitness = fitness2, dist = odleglosci, pogoda = pogoda, lower = 1, upper = liczba_miast, popSize = 200, maxiter = 300, run = 50, pmutation = 0.1)
+```
+
+```{r}
+mds <- cmdscale(odleglosci)
+x <- mds[, 1]
+y <- -mds[, 2]
+plot(x, y, type = "n", asp = 1, xlab = "", ylab = "")
+abline(h = pretty(range(x), 10), v = pretty(range(y), 10),
+           col = "light gray")
+tour <- wynik2@solution[1, ]
+tour <- c(tour, tour[1])
+n <- length(tour)
+arrows(x[tour[-n]], y[tour[-n]], x[tour[-1]], y[tour[-1]],
+           length = 0.15, angle = 25, col = "steelblue", lwd = 2)
+text(x, y, nazwy, cex=0.8)
+```
+
+```{r}
+summary(wynik2)
+```
+
+```{r}
+ex <- wynik2@solution
+```
+
+4. Obliczanie trasy z uwzględnieniem drugiego komiwojażera
+
+```{r}
+fitness3 <- function(tour, dist, pogoda) {
+   
+   tour2 <- c(tour, tour[1])
+   route <- embed(tour2, 2)
+   deszcz_kara <- 0
+   
+   dystans <- sum(dist[route])
+   spotkanie_kara <- 0
+
+   deszcz_kara <- sum(sapply(1:length(tour), function(x) pogoda[x, tour[x]] * 200))
+
+   spotkanie_kara <- sapply(1:length(tour), function(i) {sum(tour[i] == ex[i]) * 300})
+
+
+   -sum(dystans, deszcz_kara,spotkanie_kara)
+}
+
+```
+
+```{r}
+wynik3 <- ga(type = "permutation", fitness = fitness3, dist = odleglosci, pogoda = pogoda,lower = 1, upper = liczba_miast, popSize = 200, maxiter = 300, run = 50, pmutation = 0.1)
+```
+
+```{r}
+mds <- cmdscale(odleglosci)
+x <- mds[, 1]
+y <- -mds[, 2]
+plot(x, y, type = "n", asp = 1, xlab = "", ylab = "")
+abline(h = pretty(range(x), 10), v = pretty(range(y), 10),
+           col = "light gray")
+tour <- wynik3@solution[1, ]
+tour <- c(tour, tour[1])
+n <- length(tour)
+arrows(x[tour[-n]], y[tour[-n]], x[tour[-1]], y[tour[-1]],
+           length = 0.15, angle = 25, col = "steelblue", lwd = 2)
+text(x, y, nazwy, cex=0.8)
+```
+
+```{r}
+summary(wynik3)
+```
+
+```{r}
+wynik@solution[1,]
+```
+
+```{r}
+wynik2@solution
+```
+
+
+
